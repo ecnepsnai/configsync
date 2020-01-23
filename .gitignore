@@ -1,0 +1,3 @@
+cmd/configsync/*
+!cmd/configsync/*.go
+vendor/
