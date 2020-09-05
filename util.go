@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cespare/xxhash"
+	"github.com/cespare/xxhash/v2"
 )
 
 func directoryExists(dirPath string) bool {
