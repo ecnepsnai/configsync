@@ -1,18 +1,7 @@
 package configsync
 
 import (
-	"fmt"
-	"os"
+	"github.com/ecnepsnai/logtic"
 )
 
-func stderr(format string, args ...interface{}) {
-	a := fmt.Sprintf(format, args...)
-	os.Stderr.WriteString(a)
-	os.Stderr.WriteString("\n")
-}
-
-func stdout(format string, args ...interface{}) {
-	a := fmt.Sprintf(format, args...)
-	os.Stdout.WriteString(a)
-	os.Stdout.WriteString("\n")
-}
+var log = logtic.Connect("configsync")

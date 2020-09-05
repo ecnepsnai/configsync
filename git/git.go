@@ -6,7 +6,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/ecnepsnai/logtic"
 )
+
+var log = logtic.Connect("git")
 
 // Git describes a git instance
 type Git struct {
@@ -36,6 +40,7 @@ func New(gitBinPath string, repoDir string) (*Git, error) {
 
 func (g *Git) exec(verb string, args ...string) ([]byte, error) {
 	args = append([]string{verb}, args...)
+	log.Debug("exec: %s %v", g.gitPath, args)
 	cmd := exec.Command(g.gitPath, args...)
 	cmd.Dir = g.repoDir
 	return cmd.CombinedOutput()
@@ -59,6 +64,7 @@ func (g *Git) Version() (*int, error) {
 		return nil, fmt.Errorf("unknown git version: %s", versionString)
 	}
 
+	log.Debug("git version: %d", version)
 	return &version, nil
 }
 

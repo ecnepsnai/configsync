@@ -32,7 +32,7 @@ func makeDirectoryIfNotExists(dirPath string) {
 func getHostname() string {
 	hostname, err := os.Hostname()
 	if err != nil {
-		panic(err)
+		log.Fatal("error getting hostname: %s", err)
 	}
 	return hostname
 }
@@ -41,11 +41,11 @@ func hashFile(filePath string) uint64 {
 	w := xxhash.New()
 	f, err := os.OpenFile(filePath, os.O_RDONLY, 0644)
 	if err != nil {
-		panic(err)
+		log.Fatal("error opening file for hasing: %s", err)
 	}
 	defer f.Close()
 	if _, err := io.CopyBuffer(w, f, nil); err != nil {
-		panic(err)
+		log.Fatal("error hashing file: %s", err)
 	}
 	return w.Sum64()
 }

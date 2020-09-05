@@ -7,28 +7,39 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"syscall"
 
 	"github.com/ecnepsnai/configsync/git"
+	"github.com/ecnepsnai/logtic"
 )
 
 // Sync sync all config files
 func Sync(config *Config) {
+	if config.Verbose {
+		logtic.Log.Level = logtic.LevelDebug
+		logtic.Open()
+	}
+
 	if config.Git.Author == "" {
 		config.Git.Author = "configsync <configsync@" + getHostname() + ">"
 	}
 
+	log.Debug("git author: %s", config.Git.Author)
+
 	workDir := config.Workdir
 	makeDirectoryIfNotExists(workDir)
 
+	log.Debug("working in directory: %s", workDir)
+
 	git, err := git.New(config.Git.Path, config.Workdir)
 	if err != nil {
-		panic(err)
+		log.Fatal("error opening git instance: %s", err.Error())
 	}
 	if err := git.InitIfNeeded(); err != nil {
-		panic(err)
+		log.Fatal("error initalizing git repo: %s", err.Error())
 	}
 	if err := git.Checkout(getHostname()); err != nil {
-		panic(err)
+		log.Fatal("error checking out git branch: %s", err.Error())
 	}
 	if config.Git.RemoteEnabled {
 		git.Pull()
@@ -62,7 +73,7 @@ func Sync(config *Config) {
 			}
 		}
 		if shouldRemove {
-			stdout("Previously synced file '%s' no longer exists, removing", file.Path)
+			log.Info("Previously synced file '%s' no longer exists, removing", file.Path)
 			git.Remove(syncPath)
 		}
 	}
@@ -78,15 +89,15 @@ func Sync(config *Config) {
 
 		files, err := filepath.Glob(pattern)
 		if err != nil {
-			stderr("No files matched glob '%s'", pattern)
+			log.Error("No files matched glob '%s'", pattern)
 			continue
 		}
-		stdout("Expanding glob '%s' to -> %v", pattern, files)
+		log.Info("Expanding glob '%s' to -> %v", pattern, files)
 		filesToBackup = append(filesToBackup, files...)
 	}
 
 	for _, filePath := range filesToBackup {
-		stdout("Syncing file '%s'", filePath)
+		log.Info("Syncing file '%s'", filePath)
 		var destHash uint64 = 0
 		syncPath := path.Join(workDir, filePath)
 		if fileExists(syncPath) {
@@ -95,7 +106,7 @@ func Sync(config *Config) {
 		sourceHash := hashFile(filePath)
 
 		if sourceHash == destHash {
-			stdout("No changes to already synced file '%s'", syncPath)
+			log.Info("No changes to already synced file '%s'", syncPath)
 			metadata.Files = append(metadata.Files, File{
 				Path: filePath,
 				Hash: destHash,
@@ -108,52 +119,58 @@ func Sync(config *Config) {
 
 		info, err := os.Stat(filePath)
 		if err != nil {
-			// Error
-			stderr("Error stat-ing file: %s", err.Error())
+			log.Error("Error stat-ing file: %s", err.Error())
 			continue
 		}
 
 		source, err := os.OpenFile(filePath, os.O_RDONLY, 0644)
 		if err != nil {
-			// Error
-			stderr("Error opening source file: %s", err.Error())
+			log.Error("Error opening source file: %s", err.Error())
 			continue
 		}
 		dest, err := os.OpenFile(syncPath, os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
-			// Error
-			stderr("Error opening destination file: %s", err.Error())
+			log.Error("Error opening destination file: %s", err.Error())
 			continue
 		}
 
 		wrote, err := io.CopyBuffer(dest, source, nil)
 		if err != nil {
-			// Error
-			stderr("Error copying source file: %s", err.Error())
+			log.Error("Error copying source file: %s", err.Error())
 			continue
 		}
 		if wrote != info.Size() {
-			// Error
-			stderr("Did not copy entire source file")
+			log.Error("Did not copy entire source file")
 			continue
 		}
 
 		destHash = hashFile(syncPath)
 		if sourceHash != destHash {
-			// Error
-			stderr("Source and destination hash do not match. %d != %d", sourceHash, destHash)
+			log.Error("Source and destination hash do not match. %d != %d", sourceHash, destHash)
 			continue
+		}
+
+		var UID int
+		var GID int
+		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+			UID = int(stat.Uid)
+			GID = int(stat.Gid)
 		}
 
 		metadata.Files = append(metadata.Files, File{
 			Path: filePath,
 			Hash: destHash,
+			Info: Info{
+				Mode: uint32(info.Mode()),
+				UID:  UID,
+				GID:  GID,
+			},
 		})
-		stdout("Successfully synced file '%s'", filePath)
+		log.Info("Successfully synced file '%s'", filePath)
 	}
 
 	for _, command := range config.Commands {
-		stdout("Running command '%s' -> '%s'", command.CommandLine, command.Filepath)
+		log.Info("Running command '%s' -> '%s'", command.CommandLine, command.Filepath)
 		syncPath := path.Join(workDir, command.Filepath)
 		syncDir := pathWithoutFile(syncPath)
 		makeDirectoryIfNotExists(syncDir)
@@ -162,20 +179,18 @@ func Sync(config *Config) {
 		var buf bytes.Buffer
 		cmd.Stdout = &buf
 		if err := cmd.Run(); err != nil {
-			stderr("Error running command '%s': %s", command.CommandLine, err.Error())
+			log.Error("Error running command '%s': %s", command.CommandLine, err.Error())
 			continue
 		}
 
 		dest, err := os.OpenFile(syncPath, os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
-			// Error
-			stderr("Error opening destination file: %s", err.Error())
+			log.Error("Error opening destination file: %s", err.Error())
 			continue
 		}
 
 		_, err = io.CopyBuffer(dest, &buf, nil)
 		if err != nil {
-			// Error
 			continue
 		}
 
@@ -185,7 +200,7 @@ func Sync(config *Config) {
 			Hash:        destHash,
 			FromCommand: true,
 		})
-		stdout("Successfully synced file '%s'", command.Filepath)
+		log.Info("Successfully synced file '%s'", command.Filepath)
 	}
 
 	saveMetadata(metadataPath, metadata)

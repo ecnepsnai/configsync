@@ -6,6 +6,7 @@ type Config struct {
 	Commands []Command `json:"commands"`
 	Workdir  string    `json:"work_dir"`
 	Git      GitConfig `json:"git"`
+	Verbose  bool      `json:"verbose"`
 }
 
 // Command describes a command to run

@@ -14,7 +14,15 @@ type Metadata struct {
 type File struct {
 	Path        string
 	Hash        uint64
+	Info        Info
 	FromCommand bool
+}
+
+// Info describes information about the file
+type Info struct {
+	Mode uint32
+	UID  int
+	GID  int
 }
 
 func tryLoadMeta(metaPath string) *Metadata {
