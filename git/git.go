@@ -40,7 +40,7 @@ func New(gitBinPath string, repoDir string) (*Git, error) {
 
 func (g *Git) exec(verb string, args ...string) ([]byte, error) {
 	args = append([]string{verb}, args...)
-	log.Debug("exec: %s %v", g.gitPath, args)
+	log.Debug("exec: %s %v", g.gitPath, strings.Join(args, " "))
 	cmd := exec.Command(g.gitPath, args...)
 	cmd.Dir = g.repoDir
 	return cmd.CombinedOutput()
@@ -96,10 +96,7 @@ func (g *Git) CurrentBranch() (*string, error) {
 // Checkout checkout a specific branch
 func (g *Git) Checkout(branch string) error {
 	current, err := g.CurrentBranch()
-	if err != nil {
-		return err
-	}
-	if branch == *current {
+	if err == nil && branch == *current {
 		return nil
 	}
 
@@ -143,6 +140,7 @@ func (g *Git) HasChanges() bool {
 	if err != nil {
 		panic(err)
 	}
+	log.Debug("workdir status: %s", out)
 	return len(out) > 1
 }
 

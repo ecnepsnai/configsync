@@ -1,49 +1,46 @@
-package configsync
+package main
 
 import (
 	"encoding/json"
 	"os"
 )
 
-// Metadata describes a metadata object
-type Metadata struct {
-	Files []File
+type metadataType struct {
+	Files []fileType
 }
 
-// File describes metadata about a file
-type File struct {
+type fileType struct {
 	Path        string
 	Hash        uint64
-	Info        Info
+	Info        fileInfoType
 	FromCommand bool
 }
 
-// Info describes information about the file
-type Info struct {
+type fileInfoType struct {
 	Mode uint32
 	UID  int
 	GID  int
 }
 
-func tryLoadMeta(metaPath string) *Metadata {
+func tryLoadMeta(metaPath string) *metadataType {
 	if !fileExists(metaPath) {
-		return &Metadata{}
+		return &metadataType{}
 	}
 
 	f, err := os.OpenFile(metaPath, os.O_RDONLY, 0644)
 	if err != nil {
-		return &Metadata{}
+		return &metadataType{}
 	}
 	defer f.Close()
-	metadata := Metadata{}
+	metadata := metadataType{}
 	if err := json.NewDecoder(f).Decode(&metadata); err != nil {
-		return &Metadata{}
+		return &metadataType{}
 	}
 
 	return &metadata
 }
 
-func saveMetadata(metaPath string, metadata *Metadata) {
+func saveMetadata(metaPath string, metadata *metadataType) {
 	os.Remove(metaPath)
 	f, err := os.OpenFile(metaPath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {

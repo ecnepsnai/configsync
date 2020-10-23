@@ -1,22 +1,19 @@
-package configsync
+package main
 
-// Config describes the configsync config
-type Config struct {
-	Files    []string  `json:"files"`
-	Commands []Command `json:"commands"`
-	Workdir  string    `json:"work_dir"`
-	Git      GitConfig `json:"git"`
-	Verbose  bool      `json:"verbose"`
+type configType struct {
+	Files    []string      `json:"files"`
+	Commands []commandType `json:"commands"`
+	Workdir  string        `json:"work_dir"`
+	Git      gitConfigType `json:"git"`
+	Verbose  bool          `json:"verbose"`
 }
 
-// Command describes a command to run
-type Command struct {
+type commandType struct {
 	CommandLine string `json:"command_line"`
 	Filepath    string `json:"file_path"`
 }
 
-// GitConfig describes git configuration
-type GitConfig struct {
+type gitConfigType struct {
 	Path          string `json:"path"`
 	Author        string `json:"author"`
 	RemoteEnabled bool   `json:"remote_enabled"`

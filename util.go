@@ -1,4 +1,4 @@
-package configsync
+package main
 
 import (
 	"io"

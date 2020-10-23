@@ -1,4 +1,4 @@
-package configsync
+package main
 
 import (
 	"bytes"
@@ -13,12 +13,13 @@ import (
 	"github.com/ecnepsnai/logtic"
 )
 
-// Sync sync all config files
-func Sync(config *Config) {
+func startSync(config *configType) {
 	if config.Verbose {
 		logtic.Log.Level = logtic.LevelDebug
-		logtic.Open()
+	} else {
+		logtic.Log.Level = logtic.LevelWarn
 	}
+	logtic.Open()
 
 	if config.Git.Author == "" {
 		config.Git.Author = "configsync <configsync@" + getHostname() + ">"
@@ -78,7 +79,7 @@ func Sync(config *Config) {
 		}
 	}
 
-	metadata.Files = []File{}
+	metadata.Files = []fileType{}
 
 	filesToBackup := []string{}
 	for _, pattern := range config.Files {
@@ -99,6 +100,7 @@ func Sync(config *Config) {
 	for _, filePath := range filesToBackup {
 		log.Info("Syncing file '%s'", filePath)
 		var destHash uint64 = 0
+		syncAtomicPath := path.Join(workDir, filePath+"_")
 		syncPath := path.Join(workDir, filePath)
 		if fileExists(syncPath) {
 			destHash = hashFile(syncPath)
@@ -107,7 +109,7 @@ func Sync(config *Config) {
 
 		if sourceHash == destHash {
 			log.Info("No changes to already synced file '%s'", syncPath)
-			metadata.Files = append(metadata.Files, File{
+			metadata.Files = append(metadata.Files, fileType{
 				Path: filePath,
 				Hash: destHash,
 			})
@@ -128,19 +130,25 @@ func Sync(config *Config) {
 			log.Error("Error opening source file: %s", err.Error())
 			continue
 		}
-		dest, err := os.OpenFile(syncPath, os.O_WRONLY|os.O_CREATE, 0644)
+		dest, err := os.OpenFile(syncAtomicPath, os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			log.Error("Error opening destination file: %s", err.Error())
 			continue
 		}
 
 		wrote, err := io.CopyBuffer(dest, source, nil)
+		dest.Close()
 		if err != nil {
 			log.Error("Error copying source file: %s", err.Error())
 			continue
 		}
 		if wrote != info.Size() {
 			log.Error("Did not copy entire source file")
+			continue
+		}
+
+		if err := os.Rename(syncAtomicPath, syncPath); err != nil {
+			log.Error("Error writing replacement file '%s': %s", syncPath, err.Error())
 			continue
 		}
 
@@ -157,10 +165,10 @@ func Sync(config *Config) {
 			GID = int(stat.Gid)
 		}
 
-		metadata.Files = append(metadata.Files, File{
+		metadata.Files = append(metadata.Files, fileType{
 			Path: filePath,
 			Hash: destHash,
-			Info: Info{
+			Info: fileInfoType{
 				Mode: uint32(info.Mode()),
 				UID:  UID,
 				GID:  GID,
@@ -171,6 +179,7 @@ func Sync(config *Config) {
 
 	for _, command := range config.Commands {
 		log.Info("Running command '%s' -> '%s'", command.CommandLine, command.Filepath)
+		syncAtomicPath := path.Join(workDir, command.Filepath+"_")
 		syncPath := path.Join(workDir, command.Filepath)
 		syncDir := pathWithoutFile(syncPath)
 		makeDirectoryIfNotExists(syncDir)
@@ -183,19 +192,26 @@ func Sync(config *Config) {
 			continue
 		}
 
-		dest, err := os.OpenFile(syncPath, os.O_WRONLY|os.O_CREATE, 0644)
+		dest, err := os.OpenFile(syncAtomicPath, os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			log.Error("Error opening destination file: %s", err.Error())
 			continue
 		}
 
 		_, err = io.CopyBuffer(dest, &buf, nil)
+		dest.Close()
 		if err != nil {
+			os.Remove(syncAtomicPath)
+			continue
+		}
+
+		if err := os.Rename(syncAtomicPath, syncPath); err != nil {
+			log.Error("Error writing replacement file '%s': %s", syncPath, err.Error())
 			continue
 		}
 
 		destHash := hashFile(syncPath)
-		metadata.Files = append(metadata.Files, File{
+		metadata.Files = append(metadata.Files, fileType{
 			Path:        command.Filepath,
 			Hash:        destHash,
 			FromCommand: true,
@@ -212,4 +228,6 @@ func Sync(config *Config) {
 			git.Push(config.Git.RemoteName, getHostname())
 		}
 	}
+
+	log.Info("Finished")
 }
