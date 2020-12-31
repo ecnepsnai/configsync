@@ -126,8 +126,9 @@ func (g *Git) Push(remote, local string) error {
 }
 
 // Remove perform a git rm -f
-func (g *Git) Remove(filePath string) error {
-	_, err := g.exec("rm", "-f", filePath)
+func (g *Git) Remove(filePath ...string) error {
+	args := append([]string{"-f"}, filePath...)
+	_, err := g.exec("rm", args...)
 	if err != nil {
 		return err
 	}

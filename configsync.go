@@ -13,6 +13,13 @@ import (
 	"github.com/ecnepsnai/logtic"
 )
 
+const fileSourceCommand = "cmd"
+
+type fileToBackupT struct {
+	FilePath string
+	Source   string
+}
+
 func startSync(config *configType) {
 	if config.Verbose {
 		logtic.Log.Level = logtic.LevelDebug
@@ -58,33 +65,42 @@ func startSync(config *configType) {
 		fileMap[pattern] = true
 	}
 
+	filesToRemove := []string{}
 	for _, file := range metadata.Files {
 		syncPath := path.Join(workDir, file.Path)
 		shouldRemove := false
-		if file.FromCommand {
+		if file.Source == fileSourceCommand {
 			if !commandFileMap[file.Path] {
+				log.Warn("Will remove command output '%s' ('%s') because it was removed from the config", file.Path, syncPath)
 				shouldRemove = true
 			}
 		} else {
-			if !fileMap[file.Path] {
+			if !fileMap[file.Source] {
+				log.Warn("Will remove file '%s' ('%s') because it was removed from the config", file.Path, syncPath)
 				shouldRemove = true
 			}
 			if !fileExists(file.Path) {
+				log.Warn("Will remove file '%s' ('%s') because the source no longer exists", file.Path, syncPath)
 				shouldRemove = true
 			}
 		}
 		if shouldRemove {
-			log.Info("Previously synced file '%s' no longer exists, removing", file.Path)
-			git.Remove(syncPath)
+			filesToRemove = append(filesToRemove, syncPath)
 		}
+	}
+	if len(filesToRemove) > 0 {
+		git.Remove(filesToRemove...)
 	}
 
 	metadata.Files = []fileType{}
 
-	filesToBackup := []string{}
+	filesToBackup := []fileToBackupT{}
 	for _, pattern := range config.Files {
 		if fileExists(pattern) {
-			filesToBackup = append(filesToBackup, pattern)
+			filesToBackup = append(filesToBackup, fileToBackupT{
+				FilePath: pattern,
+				Source:   pattern,
+			})
 			continue
 		}
 
@@ -94,24 +110,48 @@ func startSync(config *configType) {
 			continue
 		}
 		log.Info("Expanding glob '%s' to -> %v", pattern, files)
-		filesToBackup = append(filesToBackup, files...)
+		for _, file := range files {
+			filesToBackup = append(filesToBackup, fileToBackupT{
+				FilePath: file,
+				Source:   pattern,
+			})
+		}
 	}
 
-	for _, filePath := range filesToBackup {
-		log.Info("Syncing file '%s'", filePath)
+	for _, fileToBackup := range filesToBackup {
+		log.Info("Syncing file '%s'", fileToBackup.FilePath)
 		var destHash uint64 = 0
-		syncAtomicPath := path.Join(workDir, filePath+"_")
-		syncPath := path.Join(workDir, filePath)
+		syncAtomicPath := path.Join(workDir, fileToBackup.FilePath+"_")
+		syncPath := path.Join(workDir, fileToBackup.FilePath)
 		if fileExists(syncPath) {
 			destHash = hashFile(syncPath)
 		}
-		sourceHash := hashFile(filePath)
+		sourceHash := hashFile(fileToBackup.FilePath)
+
+		info, err := os.Stat(fileToBackup.FilePath)
+		if err != nil {
+			log.Error("Error stat-ing file: %s", err.Error())
+			continue
+		}
+
+		var UID int
+		var GID int
+		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+			UID = int(stat.Uid)
+			GID = int(stat.Gid)
+		}
 
 		if sourceHash == destHash {
 			log.Info("No changes to already synced file '%s'", syncPath)
 			metadata.Files = append(metadata.Files, fileType{
-				Path: filePath,
+				Path: fileToBackup.FilePath,
 				Hash: destHash,
+				Info: fileInfoType{
+					Mode: uint32(info.Mode()),
+					UID:  UID,
+					GID:  GID,
+				},
+				Source: fileToBackup.Source,
 			})
 			continue
 		}
@@ -119,13 +159,7 @@ func startSync(config *configType) {
 		syncDir := pathWithoutFile(syncPath)
 		makeDirectoryIfNotExists(syncDir)
 
-		info, err := os.Stat(filePath)
-		if err != nil {
-			log.Error("Error stat-ing file: %s", err.Error())
-			continue
-		}
-
-		source, err := os.OpenFile(filePath, os.O_RDONLY, 0644)
+		source, err := os.OpenFile(fileToBackup.FilePath, os.O_RDONLY, 0644)
 		if err != nil {
 			log.Error("Error opening source file: %s", err.Error())
 			continue
@@ -158,23 +192,17 @@ func startSync(config *configType) {
 			continue
 		}
 
-		var UID int
-		var GID int
-		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
-			UID = int(stat.Uid)
-			GID = int(stat.Gid)
-		}
-
 		metadata.Files = append(metadata.Files, fileType{
-			Path: filePath,
+			Path: fileToBackup.FilePath,
 			Hash: destHash,
 			Info: fileInfoType{
 				Mode: uint32(info.Mode()),
 				UID:  UID,
 				GID:  GID,
 			},
+			Source: fileToBackup.Source,
 		})
-		log.Info("Successfully synced file '%s'", filePath)
+		log.Info("Successfully synced file '%s'", fileToBackup.FilePath)
 	}
 
 	for _, command := range config.Commands {
@@ -212,9 +240,9 @@ func startSync(config *configType) {
 
 		destHash := hashFile(syncPath)
 		metadata.Files = append(metadata.Files, fileType{
-			Path:        command.Filepath,
-			Hash:        destHash,
-			FromCommand: true,
+			Path:   command.Filepath,
+			Hash:   destHash,
+			Source: fileSourceCommand,
 		})
 		log.Info("Successfully synced file '%s'", command.Filepath)
 	}
