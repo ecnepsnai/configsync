@@ -20,7 +20,7 @@ type Git struct {
 
 const minimumGitVersion = 170
 
-// New initalize a new git instance
+// New initialize a new git instance
 func New(gitBinPath string, repoDir string) (*Git, error) {
 	g := Git{
 		gitPath: gitBinPath,
@@ -52,7 +52,7 @@ func (g *Git) Version() (*int, error) {
 	if err != nil {
 		return nil, err
 	}
-	pattern := regexp.MustCompile("\\d+\\.\\d+\\.\\d+(\\.\\d+)?")
+	pattern := regexp.MustCompile(`\d+\.\d+\.\d+(\.\d+)?`)
 	versionString := pattern.FindString(string(out))
 	if versionString == "" {
 		return nil, fmt.Errorf("unknown git version: %s", out)
@@ -68,7 +68,7 @@ func (g *Git) Version() (*int, error) {
 	return &version, nil
 }
 
-// InitIfNeeded initalize a new repo if needed
+// InitIfNeeded initialize a new repo if needed
 func (g *Git) InitIfNeeded() error {
 	_, err := g.exec("status")
 	if err == nil {
