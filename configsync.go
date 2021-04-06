@@ -102,7 +102,11 @@ func Start(config *ConfigType) {
 
 		files, err := filepath.Glob(pattern)
 		if err != nil {
-			log.Error("No files matched glob '%s'", pattern)
+			log.Error("Invalid glob pattern '%s'", pattern)
+			continue
+		}
+		if len(files) == 0 {
+			log.Warn("No files matched glob '%s'", pattern)
 			continue
 		}
 		log.Info("Expanding glob '%s' to -> %v", pattern, files)

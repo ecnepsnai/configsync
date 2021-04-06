@@ -13,7 +13,7 @@ import (
 
 func main() {
 	args := os.Args
-	if len(args) == 1 {
+	if len(args) == 1 || args[1] == "-h" || args[1] == "--help" {
 		fmt.Fprintf(os.Stderr, "Usage %s <config JSON path>\n", os.Args[0])
 		os.Exit(1)
 	}
