@@ -14,8 +14,9 @@ function build {
 
 rm -rf artifacts
 mkdir -p artifacts
-build linux amd64
-build netbsd amd64
-build freebsd amd64
-build openbsd amd64
-build darwin amd64
+
+for ARCH in 'amd64' 'arm64'; do
+    for OS in 'linux' 'freebsd' 'openbsd' 'netbsd' 'darwin'; do
+        build ${OS} ${ARCH}
+    done
+done
