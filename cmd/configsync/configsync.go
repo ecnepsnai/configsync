@@ -1,4 +1,3 @@
-// Command configsync is a command line tool to sync system configuration files and command outputs in a git repo
 package main
 
 import (
@@ -8,10 +7,9 @@ import (
 	"path"
 	"strings"
 
+	"github.com/ecnepsnai/configsync"
 	"github.com/ecnepsnai/logtic"
 )
-
-var log = logtic.Connect("configsync")
 
 func main() {
 	args := os.Args
@@ -25,7 +23,7 @@ func main() {
 		panic(err)
 	}
 	defer f.Close()
-	config := configType{}
+	config := configsync.ConfigType{}
 	if err := json.NewDecoder(f).Decode(&config); err != nil {
 		panic(err)
 	}
@@ -54,7 +52,14 @@ func main() {
 		config.Git.Path = gitPath
 	}
 
-	startSync(&config)
+	if config.Verbose {
+		logtic.Log.Level = logtic.LevelDebug
+	} else {
+		logtic.Log.Level = logtic.LevelWarn
+	}
+	logtic.Open()
+
+	configsync.Start(&config)
 }
 
 func findGitBin() string {
@@ -64,7 +69,8 @@ func findGitBin() string {
 	}
 	for _, p := range strings.Split(envPath, ":") {
 		gitPath := path.Join(p, "git")
-		if fileExists(gitPath) {
+		info, _ := os.Stat(gitPath)
+		if info != nil {
 			return gitPath
 		}
 	}

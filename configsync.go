@@ -1,4 +1,4 @@
-package main
+package configsync
 
 import (
 	"bytes"
@@ -13,6 +13,8 @@ import (
 	"github.com/ecnepsnai/logtic"
 )
 
+var log = logtic.Connect("configsync")
+
 const fileSourceCommand = "cmd"
 
 type fileToBackupT struct {
@@ -20,14 +22,8 @@ type fileToBackupT struct {
 	Source   string
 }
 
-func startSync(config *configType) {
-	if config.Verbose {
-		logtic.Log.Level = logtic.LevelDebug
-	} else {
-		logtic.Log.Level = logtic.LevelWarn
-	}
-	logtic.Open()
-
+// Start beging the sync process
+func Start(config *ConfigType) {
 	if config.Git.Author == "" {
 		config.Git.Author = "configsync <configsync@" + getHostname() + ">"
 	}

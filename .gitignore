@@ -1,3 +1,4 @@
 *.json
-/configsync
+cmd/configsync/*
+!cmd/configsync/*.go
 artifacts/
