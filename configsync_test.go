@@ -14,6 +14,9 @@ import (
 
 var tmpDir string
 var verbose bool
+var gitOptions = configsync.GitOptionsType{
+	Path: "/usr/bin/git",
+}
 
 func isTestVerbose() bool {
 	for _, arg := range os.Args {
@@ -93,16 +96,12 @@ func TestConfigsyncGlob(t *testing.T) {
 		i++
 	}
 
-	config := configsync.ConfigType{
-		Workdir: workDir,
-		Files: []string{
-			path.Join(tmp, "*.txt"),
-		},
-		Git: configsync.GitConfigType{
-			Path: "/usr/bin/git",
-		},
+	files := []string{
+		path.Join(tmp, "*.txt"),
 	}
-	configsync.Start(&config)
+	commands := []configsync.CommandType{}
+
+	configsync.Start(workDir, files, commands, gitOptions)
 
 	i = 5
 	for i < 10 {
@@ -112,9 +111,9 @@ func TestConfigsyncGlob(t *testing.T) {
 	}
 	os.Remove(path.Join(tmp, fmt.Sprintf("%d.txt", 0)))
 	touchFile(path.Join(tmp, fmt.Sprintf("%d.txt", 11)))
-	config.Files = config.Files[1:]
+	files = files[1:]
 
-	configsync.Start(&config)
+	configsync.Start(workDir, files, commands, gitOptions)
 
 	os.RemoveAll(workDir)
 	os.RemoveAll(tmp)
@@ -137,24 +136,19 @@ func TestConfigsyncFile(t *testing.T) {
 		touchFile(path.Join(tmp, idx, "foo.txt"))
 	}
 
-	config := configsync.ConfigType{
-		Workdir: workDir,
-		Files: []string{
-			path.Join(tmp, "/1/foo.txt"),
-			path.Join(tmp, "/2/foo.txt"),
-			path.Join(tmp, "/3/foo.txt"),
-		},
-		Git: configsync.GitConfigType{
-			Path: "/usr/bin/git",
-		},
+	files := []string{
+		path.Join(tmp, "/1/foo.txt"),
+		path.Join(tmp, "/2/foo.txt"),
+		path.Join(tmp, "/3/foo.txt"),
 	}
-	configsync.Start(&config)
+	commands := []configsync.CommandType{}
+	configsync.Start(workDir, files, commands, gitOptions)
 
 	os.Remove(path.Join(tmp, "1", "foo.txt"))
 	touchFile(path.Join(tmp, "1", "foo.txt"))
-	config.Files = config.Files[:2]
+	files = files[:2]
 
-	configsync.Start(&config)
+	configsync.Start(workDir, files, commands, gitOptions)
 
 	os.RemoveAll(workDir)
 	os.RemoveAll(tmp)
@@ -172,30 +166,26 @@ func TestConfigsyncCommand(t *testing.T) {
 		panic(err)
 	}
 
-	config := configsync.ConfigType{
-		Workdir: workDir,
-		Commands: []configsync.CommandType{
-			{
-				CommandLine: "openssl rand -hex 10",
-				Filepath:    "/rand",
-			},
-			{
-				CommandLine: "hostname",
-				Filepath:    "/hostname",
-			},
-			{
-				CommandLine: "date",
-				Filepath:    "/date",
-			},
+	files := []string{}
+	commands := []configsync.CommandType{
+		{
+			CommandLine: "openssl rand -hex 10",
+			Filepath:    "/rand",
 		},
-		Git: configsync.GitConfigType{
-			Path: "/usr/bin/git",
+		{
+			CommandLine: "hostname",
+			Filepath:    "/hostname",
+		},
+		{
+			CommandLine: "date",
+			Filepath:    "/date",
 		},
 	}
-	configsync.Start(&config)
-	config.Commands = config.Commands[:2]
+	configsync.Start(workDir, files, commands, gitOptions)
 
-	configsync.Start(&config)
+	commands = commands[:2]
+
+	configsync.Start(workDir, files, commands, gitOptions)
 
 	os.RemoveAll(workDir)
 	os.RemoveAll(tmp)
@@ -209,17 +199,13 @@ func TestConfigsyncInvalidGlob(t *testing.T) {
 		panic(err)
 	}
 
-	config := configsync.ConfigType{
-		Workdir: workDir,
-		Files: []string{
-			`\`,
-			"/does/not/**/map/to/anything",
-		},
-		Git: configsync.GitConfigType{
-			Path: "/usr/bin/git",
-		},
+	files := []string{
+		`\`,
+		"/does/not/**/map/to/anything",
 	}
-	configsync.Start(&config)
+	commands := []configsync.CommandType{}
+	configsync.Start(workDir, files, commands, gitOptions)
+
 	os.RemoveAll(workDir)
 }
 
@@ -231,18 +217,14 @@ func TestConfigsyncInvalidCommand(t *testing.T) {
 		panic(err)
 	}
 
-	config := configsync.ConfigType{
-		Workdir: workDir,
-		Commands: []configsync.CommandType{
-			{
-				CommandLine: "doesnotexist anymore",
-				Filepath:    "/blah",
-			},
-		},
-		Git: configsync.GitConfigType{
-			Path: "/usr/bin/git",
+	files := []string{}
+	commands := []configsync.CommandType{
+		{
+			CommandLine: "doesnotexist anymore",
+			Filepath:    "/blah",
 		},
 	}
-	configsync.Start(&config)
+	configsync.Start(workDir, files, commands, gitOptions)
+
 	os.RemoveAll(workDir)
 }

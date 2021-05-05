@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/ecnepsnai/configsync/git"
 	"github.com/ecnepsnai/logtic"
@@ -23,19 +24,21 @@ type fileToBackupT struct {
 }
 
 // Start beging the sync process
-func Start(config *ConfigType) {
-	if config.Git.Author == "" {
-		config.Git.Author = "configsync <configsync@" + getHostname() + ">"
+func Start(workDir string, filePatterns []string, commands []CommandType, gitOptions GitOptionsType) {
+	start := time.Now()
+
+	if gitOptions.Author == "" {
+		gitOptions.Author = "configsync <configsync@" + getHostname() + ">"
 	}
 
-	log.Debug("git author: %s", config.Git.Author)
+	log.Debug("Work directory: %s", workDir)
+	log.Debug("File patterns: %v", filePatterns)
+	log.Debug("Commands: %+v", commands)
+	log.Debug("Git options: %+v", gitOptions)
 
-	workDir := config.Workdir
 	makeDirectoryIfNotExists(workDir)
 
-	log.Debug("working in directory: %s", workDir)
-
-	git, err := git.New(config.Git.Path, config.Workdir)
+	git, err := git.New(gitOptions.Path, workDir)
 	if err != nil {
 		log.Fatal("error opening git instance: %s", err.Error())
 	}
@@ -45,7 +48,7 @@ func Start(config *ConfigType) {
 	if err := git.Checkout(getHostname()); err != nil {
 		log.Fatal("error checking out git branch: %s", err.Error())
 	}
-	if config.Git.RemoteEnabled {
+	if gitOptions.RemoteEnabled {
 		git.Pull()
 	}
 
@@ -53,11 +56,11 @@ func Start(config *ConfigType) {
 	metadata := tryLoadMeta(metadataPath)
 
 	commandFileMap := map[string]bool{}
-	for _, command := range config.Commands {
+	for _, command := range commands {
 		commandFileMap[command.Filepath] = true
 	}
 	fileMap := map[string]bool{}
-	for _, pattern := range config.Files {
+	for _, pattern := range filePatterns {
 		fileMap[pattern] = true
 	}
 
@@ -91,7 +94,7 @@ func Start(config *ConfigType) {
 	metadata.Files = []fileType{}
 
 	filesToBackup := []fileToBackupT{}
-	for _, pattern := range config.Files {
+	for _, pattern := range filePatterns {
 		if fileExists(pattern) {
 			filesToBackup = append(filesToBackup, fileToBackupT{
 				FilePath: pattern,
@@ -205,7 +208,7 @@ func Start(config *ConfigType) {
 		log.Info("Successfully synced file '%s'", fileToBackup.FilePath)
 	}
 
-	for _, command := range config.Commands {
+	for _, command := range commands {
 		log.Info("Running command '%s' -> '%s'", command.CommandLine, command.Filepath)
 		syncAtomicPath := path.Join(workDir, command.Filepath+"_")
 		syncPath := path.Join(workDir, command.Filepath)
@@ -251,11 +254,12 @@ func Start(config *ConfigType) {
 
 	if git.HasChanges() {
 		git.Add(workDir)
-		git.Commit("Automatic config sync", config.Git.Author)
-		if config.Git.RemoteEnabled {
-			git.Push(config.Git.RemoteName, getHostname())
+		git.Commit("Automatic config sync", gitOptions.Author)
+		if gitOptions.RemoteEnabled {
+			git.Push(gitOptions.RemoteName, getHostname())
 		}
 	}
 
-	log.Info("Finished")
+	finished := time.Since(start)
+	log.Info("Finished in %s", finished)
 }
