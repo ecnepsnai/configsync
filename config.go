@@ -2,8 +2,13 @@ package configsync
 
 // CommandType describes a command object
 type CommandType struct {
-	CommandLine string `toml:"command_line"`
-	Filepath    string `toml:"file_path"`
+	FilePath  string   `toml:"file_path"`
+	ExePath   string   `toml:"exe_path"`
+	Arguments []string `toml:"arguments"`
+	WorkDir   string   `toml:"work_dir"`
+	Env       []string `toml:"env"`
+	User      uint32   `toml:"uid"`
+	Group     uint32   `toml:"gid"`
 }
 
 // GitOptionsType describes the configuration type for git

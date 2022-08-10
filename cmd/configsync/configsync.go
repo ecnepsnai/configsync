@@ -21,8 +21,14 @@ func printHelpAndExit() {
 
 func main() {
 	args := os.Args
-	if len(args) >= 2 && (args[1] == "-h" || args[1] == "--help") {
-		printHelpAndExit()
+	if len(args) >= 2 {
+		if args[1] == "-h" || args[1] == "--help" {
+			printHelpAndExit()
+		}
+		if args[1] == "-v" || args[1] == "--version" {
+			fmt.Printf("configsync v%s built on %s\n", Version, BuildDate)
+			os.Exit(0)
+		}
 	}
 
 	configPath := "configsync.conf"
@@ -150,11 +156,11 @@ func (c configSyncOptionsType) commands() []configsync.CommandType {
 			log.Error("Error decoding command file %s: %s", includeFile, err.Error())
 			continue
 		}
-		if command.CommandLine == "" {
-			log.Error("Invalid command file %s: Empty or missing command_line property", includeFile)
+		if command.ExePath == "" {
+			log.Error("Invalid command file %s: Empty or missing exe_path property", includeFile)
 			continue
 		}
-		if command.Filepath == "" {
+		if command.FilePath == "" {
 			log.Error("Invalid command file %s: Empty or missing file_path property", includeFile)
 			continue
 		}

@@ -169,16 +169,17 @@ func TestConfigsyncCommand(t *testing.T) {
 	files := []string{}
 	commands := []configsync.CommandType{
 		{
-			CommandLine: "openssl rand -hex 10",
-			Filepath:    "/rand",
+			ExePath:   "/usr/bin/openssl",
+			Arguments: []string{"rand", "-hex", "10"},
+			FilePath:  "/rand",
 		},
 		{
-			CommandLine: "hostname",
-			Filepath:    "/hostname",
+			ExePath:  "/usr/bin/hostname",
+			FilePath: "/hostname",
 		},
 		{
-			CommandLine: "date",
-			Filepath:    "/date",
+			ExePath:  "/usr/bin/date",
+			FilePath: "/date",
 		},
 	}
 	configsync.Start(workDir, files, commands, gitOptions)
@@ -220,8 +221,8 @@ func TestConfigsyncInvalidCommand(t *testing.T) {
 	files := []string{}
 	commands := []configsync.CommandType{
 		{
-			CommandLine: "doesnotexist anymore",
-			Filepath:    "/blah",
+			ExePath:  "doesnotexist anymore",
+			FilePath: "/blah",
 		},
 	}
 	configsync.Start(workDir, files, commands, gitOptions)

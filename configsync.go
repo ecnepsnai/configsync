@@ -57,7 +57,7 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 
 	commandFileMap := map[string]bool{}
 	for _, command := range commands {
-		commandFileMap[command.Filepath] = true
+		commandFileMap[command.FilePath] = true
 	}
 	fileMap := map[string]bool{}
 	for _, pattern := range filePatterns {
@@ -209,17 +209,32 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 	}
 
 	for _, command := range commands {
-		log.Info("Running command '%s' -> '%s'", command.CommandLine, command.Filepath)
-		syncAtomicPath := path.Join(workDir, command.Filepath+"_")
-		syncPath := path.Join(workDir, command.Filepath)
+		log.Info("Running command '%s %s' -> '%s'", command.ExePath, command.Arguments, command.FilePath)
+		syncAtomicPath := path.Join(workDir, command.FilePath+"_")
+		syncPath := path.Join(workDir, command.FilePath)
 		syncDir := pathWithoutFile(syncPath)
 		makeDirectoryIfNotExists(syncDir)
 
-		cmd := exec.Command("/bin/bash", "-c", command.CommandLine)
+		cmd := exec.Command(command.ExePath, command.Arguments...)
+		if command.WorkDir != "" {
+			cmd.Dir = command.WorkDir
+			log.Debug("Setting command workdir: %s", command.WorkDir)
+		}
+		if len(command.Env) > 0 {
+			cmd.Env = command.Env
+			log.Debug("Setting command environment variables: %s", command.Env)
+		}
+		if command.User > 0 && command.Group > 0 {
+			cmd.SysProcAttr.Credential = &syscall.Credential{
+				Uid: command.User,
+				Gid: command.Group,
+			}
+			log.Debug("Setting command UID and GID: %d, %d", command.User, command.Group)
+		}
 		var buf bytes.Buffer
 		cmd.Stdout = &buf
 		if err := cmd.Run(); err != nil {
-			log.Error("Error running command '%s': %s", command.CommandLine, err.Error())
+			log.Error("Error running command '%s %s': %s", command.ExePath, command.Arguments, err.Error())
 			continue
 		}
 
@@ -242,12 +257,22 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 		}
 
 		destHash := hashFile(syncPath)
-		metadata.Files = append(metadata.Files, fileType{
-			Path:   command.Filepath,
+
+		file := fileType{
+			Path:   command.FilePath,
 			Hash:   destHash,
 			Source: fileSourceCommand,
-		})
-		log.Info("Successfully synced file '%s'", command.Filepath)
+			Info: fileInfoType{
+				Mode: uint32(os.ModePerm),
+			},
+		}
+		if command.User > 0 && command.Group > 0 {
+			file.Info.UID = int(command.User)
+			file.Info.GID = int(command.Group)
+		}
+
+		metadata.Files = append(metadata.Files, file)
+		log.Info("Successfully synced file '%s'", command.FilePath)
 	}
 
 	saveMetadata(metadataPath, metadata)
