@@ -10,7 +10,7 @@ import (
 	"github.com/ecnepsnai/logtic"
 )
 
-var log = logtic.Connect("git")
+var log = logtic.Log.Connect("git")
 
 // Git describes a git instance
 type Git struct {

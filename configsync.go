@@ -14,7 +14,7 @@ import (
 	"github.com/ecnepsnai/logtic"
 )
 
-var log = logtic.Connect("configsync")
+var log = logtic.Log.Connect("configsync")
 
 const fileSourceCommand = "cmd"
 

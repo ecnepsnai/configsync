@@ -102,14 +102,20 @@ extension of ".cmd".
 **Example Config:**
 
 ```toml
-command_line = "zdb -C"
 file_path = "/etc/zpool.yml"
+exe_path = "/usr/sbin/zdb"
+arguments = [ "-C" ]
 ```
 
 |Option|Type|Required|Description|
 |-|-|-|-|
-|`command_line`|string|Yes|The command line to execute. Shell options are available.|
 |`file_path`|string|Yes|The pseudo file path where the output of `command_line` will be saved in the work dir.|
+|`exe_path`|string|Yes|The absolute path to the binary to execute.|
+|`arguments`|[]string|No|List of arguments to pass to the executable.|
+|`work_dir`|string|No|The working directory to start the executable in.|
+|`env`|[]string|No|Environment variables to provide the executable.|
+|`uid`|number|No|Run the executable as a specific user. Will also set ownership of the outputted file to this UID.|
+|`gid`|number|No|Run the executable as a specific group. Will also set ownership of the outputted file to this GID.|
 
 ## Work Directory Setup
 

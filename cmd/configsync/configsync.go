@@ -12,7 +12,7 @@ import (
 	"github.com/pelletier/go-toml"
 )
 
-var log = logtic.Connect("configsync")
+var log = logtic.Log.Connect("configsync")
 
 func printHelpAndExit() {
 	fmt.Fprintf(os.Stderr, "Usage %s [Override config path]\n", os.Args[0])
@@ -69,7 +69,7 @@ func main() {
 	} else {
 		logtic.Log.Level = logtic.LevelWarn
 	}
-	logtic.Open()
+	logtic.Log.Open()
 
 	configsync.Start(config.Workdir, config.filePatterns(), config.commands(), config.Git)
 }

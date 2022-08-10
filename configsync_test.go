@@ -38,7 +38,7 @@ func testSetup() {
 	if verbose {
 		logtic.Log.FilePath = "/dev/null"
 		logtic.Log.Level = logtic.LevelDebug
-		if err := logtic.Open(); err != nil {
+		if err := logtic.Log.Open(); err != nil {
 			panic(err)
 		}
 	}
@@ -46,7 +46,7 @@ func testSetup() {
 
 func testTeardown() {
 	os.RemoveAll(tmpDir)
-	logtic.Close()
+	logtic.Log.Close()
 }
 
 func TestMain(m *testing.M) {
