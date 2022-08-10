@@ -36,7 +36,12 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 	log.Debug("Commands: %+v", commands)
 	log.Debug("Git options: %+v", gitOptions)
 
-	makeDirectoryIfNotExists(workDir)
+	if err := makeDirectoryIfNotExists(workDir); err != nil {
+		log.PFatal("Error making work directory", map[string]interface{}{
+			"path":  workDir,
+			"error": err.Error(),
+		})
+	}
 
 	git, err := git.New(gitOptions.Path, workDir)
 	if err != nil {
@@ -154,9 +159,15 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 		syncAtomicPath := path.Join(workDir, fileToBackup.FilePath+"_")
 		syncPath := path.Join(workDir, fileToBackup.FilePath)
 		if fileExists(syncPath) {
-			destHash = hashFile(syncPath)
+			destHash, err = hashFile(syncPath)
+			if err != nil {
+				continue
+			}
 		}
-		sourceHash := hashFile(fileToBackup.FilePath)
+		sourceHash, err := hashFile(fileToBackup.FilePath)
+		if err != nil {
+			continue
+		}
 
 		info, err := os.Stat(fileToBackup.FilePath)
 		if err != nil {
@@ -187,7 +198,13 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 		}
 
 		syncDir := pathWithoutFile(syncPath)
-		makeDirectoryIfNotExists(syncDir)
+		if err := makeDirectoryIfNotExists(syncDir); err != nil {
+			log.PError("Error making sync directory", map[string]interface{}{
+				"path":  syncDir,
+				"error": err.Error(),
+			})
+			continue
+		}
 
 		source, err := os.OpenFile(fileToBackup.FilePath, os.O_RDONLY, 0644)
 		if err != nil {
@@ -216,7 +233,10 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 			continue
 		}
 
-		destHash = hashFile(syncPath)
+		destHash, err = hashFile(syncPath)
+		if err != nil {
+			continue
+		}
 		if sourceHash != destHash {
 			log.Error("Source and destination hash do not match. %d != %d", sourceHash, destHash)
 			continue
@@ -240,7 +260,13 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 		syncAtomicPath := path.Join(workDir, command.FilePath+"_")
 		syncPath := path.Join(workDir, command.FilePath)
 		syncDir := pathWithoutFile(syncPath)
-		makeDirectoryIfNotExists(syncDir)
+		if err := makeDirectoryIfNotExists(syncDir); err != nil {
+			log.PError("Error making sync directory", map[string]interface{}{
+				"path":  syncDir,
+				"error": err.Error(),
+			})
+			continue
+		}
 
 		cmd := exec.Command(command.ExePath, command.Arguments...)
 		if command.WorkDir != "" {
@@ -283,7 +309,10 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 			continue
 		}
 
-		destHash := hashFile(syncPath)
+		destHash, err := hashFile(syncPath)
+		if err != nil {
+			continue
+		}
 
 		file := fileType{
 			Path:   command.FilePath,

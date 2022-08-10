@@ -23,33 +23,41 @@ func fileExists(filePath string) bool {
 	return !info.IsDir()
 }
 
-func makeDirectoryIfNotExists(dirPath string) {
+func makeDirectoryIfNotExists(dirPath string) error {
 	if directoryExists(dirPath) {
-		return
+		return nil
 	}
 
-	os.MkdirAll(dirPath, 0755)
+	return os.MkdirAll(dirPath, 0755)
 }
 
 func getHostname() string {
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Fatal("error getting hostname: %s", err)
+		return "localhost"
 	}
 	return hostname
 }
 
-func hashFile(filePath string) uint64 {
+func hashFile(filePath string) (uint64, error) {
 	w := xxhash.New()
 	f, err := os.OpenFile(filePath, os.O_RDONLY, 0644)
 	if err != nil {
-		log.Fatal("error opening file for hasing: %s", err)
+		log.PError("Error opening file for hasing", map[string]interface{}{
+			"path":  filePath,
+			"error": err.Error(),
+		})
+		return 0, err
 	}
 	defer f.Close()
 	if _, err := io.CopyBuffer(w, f, nil); err != nil {
-		log.Fatal("error hashing file: %s", err)
+		log.PError("Error hasing file", map[string]interface{}{
+			"path":  filePath,
+			"error": err.Error(),
+		})
+		return 0, err
 	}
-	return w.Sum64()
+	return w.Sum64(), nil
 }
 
 func pathWithoutFile(filePath string) string {
