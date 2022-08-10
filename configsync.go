@@ -103,21 +103,48 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 			continue
 		}
 
-		files, err := filepath.Glob(pattern)
+		paths, err := filepath.Glob(pattern)
 		if err != nil {
 			log.Error("Invalid glob pattern '%s'", pattern)
 			continue
 		}
-		if len(files) == 0 {
+		if len(paths) == 0 {
 			log.Warn("No files matched glob '%s'", pattern)
 			continue
 		}
-		log.Info("Expanding glob '%s' to -> %v", pattern, files)
-		for _, file := range files {
-			filesToBackup = append(filesToBackup, fileToBackupT{
-				FilePath: file,
-				Source:   pattern,
-			})
+		log.Info("Expanding glob '%s' to -> %v", pattern, paths)
+		for _, globPath := range paths {
+			info, err := os.Stat(globPath)
+			if err != nil {
+				log.PError("Error querying path from glob", map[string]interface{}{
+					"path":  globPath,
+					"error": err.Error(),
+					"glob":  pattern,
+				})
+				continue
+			}
+			if info.IsDir() {
+				files, err := listAllFilesInDirectory(globPath)
+				if err != nil {
+					log.PError("Error listing files in directory", map[string]interface{}{
+						"path":  globPath,
+						"error": err.Error(),
+					})
+					continue
+				}
+				log.Info("Expanding directory '%s' to -> %v", globPath, files)
+				for _, file := range files {
+					filesToBackup = append(filesToBackup, fileToBackupT{
+						FilePath: file,
+						Source:   pattern,
+					})
+				}
+			} else {
+				filesToBackup = append(filesToBackup, fileToBackupT{
+					FilePath: globPath,
+					Source:   pattern,
+				})
+			}
 		}
 	}
 

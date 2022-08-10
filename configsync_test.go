@@ -119,6 +119,62 @@ func TestConfigsyncGlob(t *testing.T) {
 	os.RemoveAll(tmp)
 }
 
+func TestConfigGlobNest(t *testing.T) {
+	t.Parallel()
+
+	workDir, err := os.MkdirTemp("", "configsync")
+	if err != nil {
+		panic(err)
+	}
+	tmp, err := os.MkdirTemp("", "configsync")
+	if err != nil {
+		panic(err)
+	}
+	if err := os.Mkdir(path.Join(tmp, "files"), 0700); err != nil {
+		panic(err)
+	}
+	if err := os.Mkdir(path.Join(tmp, "files", "more_files"), 0700); err != nil {
+		panic(err)
+	}
+
+	i := 0
+	for i < 10 {
+		if i%2 == 0 {
+			touchFile(path.Join(path.Join(tmp, "files", "more_files"), fmt.Sprintf("%d.txt", i)))
+		} else {
+			touchFile(path.Join(path.Join(tmp, "files"), fmt.Sprintf("%d.txt", i)))
+		}
+		i++
+	}
+
+	files := []string{
+		path.Join(tmp, "*"),
+	}
+	commands := []configsync.CommandType{}
+
+	configsync.Start(workDir, files, commands, gitOptions)
+
+	i = 5
+	for i < 10 {
+		if i%2 == 0 {
+			os.Remove(path.Join(tmp, "files", "more_files", fmt.Sprintf("%d.txt", i)))
+			touchFile(path.Join(tmp, "files", "more_files", fmt.Sprintf("%d.txt", i)))
+		} else {
+			os.Remove(path.Join(tmp, "files", fmt.Sprintf("%d.txt", i)))
+			touchFile(path.Join(tmp, "files", fmt.Sprintf("%d.txt", i)))
+		}
+		i++
+	}
+	os.Remove(path.Join(tmp, "files", fmt.Sprintf("%d.txt", 0)))
+	touchFile(path.Join(tmp, "files", fmt.Sprintf("%d.txt", 11)))
+	files = files[1:]
+
+	configsync.Start(workDir, files, commands, gitOptions)
+
+	os.RemoveAll(workDir)
+	os.RemoveAll(tmp)
+}
+
 func TestConfigsyncFile(t *testing.T) {
 	t.Parallel()
 

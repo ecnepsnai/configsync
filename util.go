@@ -2,7 +2,9 @@ package configsync
 
 import (
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
@@ -53,4 +55,16 @@ func hashFile(filePath string) uint64 {
 func pathWithoutFile(filePath string) string {
 	components := strings.Split(filePath, "/")
 	return strings.Join(components[0:len(components)-1], "/")
+}
+
+func listAllFilesInDirectory(dir string) ([]string, error) {
+	paths := []string{}
+
+	err := filepath.WalkDir(dir, func(pathName string, d fs.DirEntry, err error) error {
+		if !d.IsDir() {
+			paths = append(paths, pathName)
+		}
+		return nil
+	})
+	return paths, err
 }
