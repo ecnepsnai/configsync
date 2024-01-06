@@ -1,6 +1,6 @@
-github.com/cespare/xxhash/v2 v2.1.2 h1:YRXhKfTDauu4ajMg1TPgFO5jnlC2HCbmLXMcTG5cbYE=
-github.com/cespare/xxhash/v2 v2.1.2/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/ecnepsnai/logtic v1.9.1 h1:EmN1g7p+xtCZMzuICnVSYsNclJSG9n+X3K8FOdffFi8=
-github.com/ecnepsnai/logtic v1.9.1/go.mod h1:fs2kkqGqiX77ejVNBKpSV/dMVtn9bTg9YtHLP9MC0U8=
-github.com/pelletier/go-toml v1.9.4 h1:tjENF6MfZAg8e4ZmZTeWaWiT2vXtsoO6+iuOjFhECwM=
-github.com/pelletier/go-toml v1.9.4/go.mod h1:u1nR/EPcESfeI/szUZKdtJ0xRNbUoANCkoOuaOx1Y+c=
+github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
+github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
+github.com/ecnepsnai/logtic v1.9.4 h1:pJ0pd9tFr3s0ogRMfB6BdgFuV/Dfx5nH8fDu589N7xY=
+github.com/ecnepsnai/logtic v1.9.4/go.mod h1:fs2kkqGqiX77ejVNBKpSV/dMVtn9bTg9YtHLP9MC0U8=
+github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
+github.com/pelletier/go-toml v1.9.5/go.mod h1:u1nR/EPcESfeI/szUZKdtJ0xRNbUoANCkoOuaOx1Y+c=
