@@ -2,3 +2,5 @@
 cmd/configsync/*
 !cmd/configsync/*.go
 artifacts/
+package/rpm/build
+package/deb/build

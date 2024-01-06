@@ -1,7 +1,7 @@
 FROM docker.io/library/rockylinux:9
 
 # Install rpm requirements
-RUN dnf -y install git curl tar rpm-build rpmdevtools
+RUN dnf -y install git tar rpm-build rpmdevtools systemd-rpm-macros
 
 # Install Golang
 ARG GOLANG_VERSION=1.21.5
