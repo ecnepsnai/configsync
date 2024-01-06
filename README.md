@@ -73,6 +73,7 @@ remote_name = "origin"
 |`git.author`|string|No|The author of commits. Will default to the hostname of the machine.|
 |`git.remote_enabled`|boolean|No|If there is a git remote that our local copy should be pushed/pulled to.|
 |`git.remote_name`|string|No (Yes if `remote_enabled` is true)|The name of the remote.|
+|`git.branch_name`|string|No|The name of the branch to use. Defaults to the hostname of the machine.|
 
 ### File Lists
 

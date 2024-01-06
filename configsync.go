@@ -30,6 +30,9 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 	if gitOptions.Author == "" {
 		gitOptions.Author = "configsync <configsync@" + getHostname() + ">"
 	}
+	if gitOptions.BranchName == "" {
+		gitOptions.BranchName = getHostname()
+	}
 
 	log.Debug("Work directory: %s", workDir)
 	log.Debug("File patterns: %v", filePatterns)
@@ -50,7 +53,7 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 	if err := git.InitIfNeeded(); err != nil {
 		log.Fatal("error initalizing git repo: %s", err.Error())
 	}
-	if err := git.Checkout(getHostname()); err != nil {
+	if err := git.Checkout(gitOptions.BranchName); err != nil {
 		log.Fatal("error checking out git branch: %s", err.Error())
 	}
 	if gitOptions.RemoteEnabled {
@@ -337,7 +340,7 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 		git.Add(workDir)
 		git.Commit("Automatic config sync", gitOptions.Author)
 		if gitOptions.RemoteEnabled {
-			git.Push(gitOptions.RemoteName, getHostname())
+			git.Push(gitOptions.RemoteName, gitOptions.BranchName)
 		}
 	}
 

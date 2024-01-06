@@ -17,4 +17,5 @@ type GitOptionsType struct {
 	Author        string `toml:"author"`
 	RemoteEnabled bool   `toml:"remote_enabled"`
 	RemoteName    string `toml:"remote_name"`
+	BranchName    string `toml:"branch_name"`
 }
