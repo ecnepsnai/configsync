@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"testing"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/ecnepsnai/logtic"
 )
 
-var tmpDir string
 var verbose bool
 var gitOptions = configsync.GitOptionsType{
 	Path: "/usr/bin/git",
@@ -29,14 +29,7 @@ func isTestVerbose() bool {
 }
 
 func testSetup() {
-	tmp, err := os.MkdirTemp("", "configsync")
-	if err != nil {
-		panic(err)
-	}
-	tmpDir = tmp
-
 	if verbose {
-		logtic.Log.FilePath = "/dev/null"
 		logtic.Log.Level = logtic.LevelDebug
 		if err := logtic.Log.Open(); err != nil {
 			panic(err)
@@ -45,7 +38,6 @@ func testSetup() {
 }
 
 func testTeardown() {
-	os.RemoveAll(tmpDir)
 	logtic.Log.Close()
 }
 
@@ -81,14 +73,8 @@ func touchFile(filePath string) error {
 func TestConfigsyncGlob(t *testing.T) {
 	t.Parallel()
 
-	workDir, err := os.MkdirTemp("", "configsync")
-	if err != nil {
-		panic(err)
-	}
-	tmp, err := os.MkdirTemp("", "configsync")
-	if err != nil {
-		panic(err)
-	}
+	workDir := t.TempDir()
+	tmp := t.TempDir()
 
 	i := 0
 	for i < 10 {
@@ -114,22 +100,13 @@ func TestConfigsyncGlob(t *testing.T) {
 	files = files[1:]
 
 	configsync.Start(workDir, files, commands, gitOptions)
-
-	os.RemoveAll(workDir)
-	os.RemoveAll(tmp)
 }
 
 func TestConfigGlobNest(t *testing.T) {
 	t.Parallel()
 
-	workDir, err := os.MkdirTemp("", "configsync")
-	if err != nil {
-		panic(err)
-	}
-	tmp, err := os.MkdirTemp("", "configsync")
-	if err != nil {
-		panic(err)
-	}
+	workDir := t.TempDir()
+	tmp := t.TempDir()
 	if err := os.Mkdir(path.Join(tmp, "files"), 0700); err != nil {
 		panic(err)
 	}
@@ -170,22 +147,13 @@ func TestConfigGlobNest(t *testing.T) {
 	files = files[1:]
 
 	configsync.Start(workDir, files, commands, gitOptions)
-
-	os.RemoveAll(workDir)
-	os.RemoveAll(tmp)
 }
 
 func TestConfigsyncFile(t *testing.T) {
 	t.Parallel()
 
-	workDir, err := os.MkdirTemp("", "configsync")
-	if err != nil {
-		panic(err)
-	}
-	tmp, err := os.MkdirTemp("", "configsync")
-	if err != nil {
-		panic(err)
-	}
+	workDir := t.TempDir()
+	tmp := t.TempDir()
 
 	for _, idx := range []string{"1", "2", "3"} {
 		os.Mkdir(path.Join(tmp, idx), os.ModePerm)
@@ -196,6 +164,7 @@ func TestConfigsyncFile(t *testing.T) {
 		path.Join(tmp, "/1/foo.txt"),
 		path.Join(tmp, "/2/foo.txt"),
 		path.Join(tmp, "/3/foo.txt"),
+		path.Join(tmp, "/4/foo.txt"),
 	}
 	commands := []configsync.CommandType{}
 	configsync.Start(workDir, files, commands, gitOptions)
@@ -205,22 +174,12 @@ func TestConfigsyncFile(t *testing.T) {
 	files = files[:2]
 
 	configsync.Start(workDir, files, commands, gitOptions)
-
-	os.RemoveAll(workDir)
-	os.RemoveAll(tmp)
 }
 
 func TestConfigsyncCommand(t *testing.T) {
 	t.Parallel()
 
-	workDir, err := os.MkdirTemp("", "configsync")
-	if err != nil {
-		panic(err)
-	}
-	tmp, err := os.MkdirTemp("", "configsync")
-	if err != nil {
-		panic(err)
-	}
+	workDir := t.TempDir()
 
 	files := []string{}
 	commands := []configsync.CommandType{
@@ -243,18 +202,12 @@ func TestConfigsyncCommand(t *testing.T) {
 	commands = commands[:2]
 
 	configsync.Start(workDir, files, commands, gitOptions)
-
-	os.RemoveAll(workDir)
-	os.RemoveAll(tmp)
 }
 
 func TestConfigsyncInvalidGlob(t *testing.T) {
 	t.Parallel()
 
-	workDir, err := os.MkdirTemp("", "configsync")
-	if err != nil {
-		panic(err)
-	}
+	workDir := t.TempDir()
 
 	files := []string{
 		`\`,
@@ -262,17 +215,12 @@ func TestConfigsyncInvalidGlob(t *testing.T) {
 	}
 	commands := []configsync.CommandType{}
 	configsync.Start(workDir, files, commands, gitOptions)
-
-	os.RemoveAll(workDir)
 }
 
 func TestConfigsyncInvalidCommand(t *testing.T) {
 	t.Parallel()
 
-	workDir, err := os.MkdirTemp("", "configsync")
-	if err != nil {
-		panic(err)
-	}
+	workDir := t.TempDir()
 
 	files := []string{}
 	commands := []configsync.CommandType{
@@ -282,6 +230,40 @@ func TestConfigsyncInvalidCommand(t *testing.T) {
 		},
 	}
 	configsync.Start(workDir, files, commands, gitOptions)
+}
 
-	os.RemoveAll(workDir)
+func TestConfigsyncUnsuccessfulCommand(t *testing.T) {
+	t.Parallel()
+
+	workDir := t.TempDir()
+
+	files := []string{}
+	commands := []configsync.CommandType{
+		{
+			ExePath:   "/bin/bash",
+			Arguments: []string{"-c", "exit 1"},
+			FilePath:  "/test",
+		},
+	}
+	configsync.Start(workDir, files, commands, gitOptions)
+}
+
+func TestConfigsyncExistingGitWorkdir(t *testing.T) {
+	t.Parallel()
+
+	workDir := t.TempDir()
+
+	c := exec.Command("git", "init")
+	c.Dir = workDir
+	c.CombinedOutput()
+
+	files := []string{}
+	commands := []configsync.CommandType{
+		{
+			ExePath:   "/usr/bin/openssl",
+			Arguments: []string{"rand", "-hex", "10"},
+			FilePath:  "/rand",
+		},
+	}
+	configsync.Start(workDir, files, commands, gitOptions)
 }

@@ -53,6 +53,9 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 	if err := git.InitIfNeeded(); err != nil {
 		log.Fatal("error initalizing git repo: %s", err.Error())
 	}
+	if git.HasChanges() {
+		log.Warn("working directory is dirty (has unstaged or untracked files)!")
+	}
 	if err := git.Checkout(gitOptions.BranchName); err != nil {
 		log.Fatal("error checking out git branch: %s", err.Error())
 	}

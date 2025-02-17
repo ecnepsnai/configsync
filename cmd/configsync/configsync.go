@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/ecnepsnai/configsync"
@@ -36,34 +38,41 @@ func main() {
 		configPath = os.Args[1]
 	}
 
-	f, err := os.OpenFile(configPath, os.O_RDONLY, 0644)
+	f, err := os.Open(configPath)
 	if err != nil {
-		panic(err)
+		if os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "Config file not found at path '%s'\n", configPath)
+			os.Exit(1)
+		}
+		fmt.Fprintf(os.Stderr, "Unable to read config file at '%s': %s\n", configPath, err.Error())
+		os.Exit(1)
 	}
 	defer f.Close()
 	config := configSyncOptionsType{}
 	if err := toml.NewDecoder(f).Decode(&config); err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Unable to read config file at '%s': %s\n", configPath, err.Error())
+		os.Exit(1)
 	}
+	config.ConfigFilePath = configPath
 
 	if config.Workdir == "" {
-		fmt.Fprintf(os.Stderr, "Workdir is required\n")
+		fmt.Fprintf(os.Stderr, "Invalid configuration: Workdir is required\n")
 		os.Exit(1)
 	}
 
 	if len(config.commands()) == 0 && len(config.filePatterns()) == 0 {
-		fmt.Fprintf(os.Stderr, "At least one file or command is required\n")
+		fmt.Fprintf(os.Stderr, "Invalid configuration: At least one file or command is required\n")
 		os.Exit(1)
 	}
 
 	if config.Git.RemoteEnabled && config.Git.RemoteName == "" {
-		fmt.Fprintf(os.Stderr, "Remote name is required if git remote is enabled\n")
+		fmt.Fprintf(os.Stderr, "Invalid configuration: Remote name is required if git remote is enabled\n")
 		os.Exit(1)
 	}
 
 	if config.Git.Path == "" {
-		gitPath := findGitBin()
-		if gitPath == "" {
+		gitPath, err := exec.LookPath("git")
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "Git binary not specified and not found anywhere on $PATH\n")
 			os.Exit(1)
 		}
@@ -80,32 +89,26 @@ func main() {
 	configsync.Start(config.Workdir, config.filePatterns(), config.commands(), config.Git)
 }
 
-func findGitBin() string {
-	envPath, present := os.LookupEnv("PATH")
-	if !present {
-		return ""
-	}
-	for _, p := range strings.Split(envPath, ":") {
-		gitPath := path.Join(p, "git")
-		info, _ := os.Stat(gitPath)
-		if info != nil {
-			return gitPath
-		}
-	}
-
-	return ""
-}
-
 type configSyncOptionsType struct {
 	ConfInclude string                    `toml:"conf_include"`
 	Workdir     string                    `toml:"workdir"`
 	Git         configsync.GitOptionsType `toml:"git"`
 	Verbose     bool                      `toml:"verbose"`
+
+	// Populated at runtime with the absolute path to the original config file
+	ConfigFilePath string `toml:"-"`
+}
+
+func (c configSyncOptionsType) includeDir() string {
+	if filepath.IsAbs(c.ConfInclude) {
+		return c.ConfInclude
+	}
+	return path.Join(filepath.Dir(c.ConfigFilePath), c.ConfInclude)
 }
 
 func (c configSyncOptionsType) includeFilesWithExtension(ext string) []string {
 	incFiles := []string{}
-	files, _ := os.ReadDir(c.ConfInclude)
+	files, _ := os.ReadDir(c.includeDir())
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ext) {
 			incFiles = append(incFiles, file.Name())
@@ -119,7 +122,7 @@ func (c configSyncOptionsType) filePatterns() []string {
 	patterns := []string{}
 
 	for _, includeFile := range c.includeFilesWithExtension(".files") {
-		f, err := os.OpenFile(path.Join(c.ConfInclude, includeFile), os.O_RDONLY, os.ModePerm)
+		f, err := os.OpenFile(path.Join(c.includeDir(), includeFile), os.O_RDONLY, os.ModePerm)
 		if err != nil {
 			log.Error("Error opening file %s: %s", includeFile, err.Error())
 			continue
@@ -145,7 +148,7 @@ func (c configSyncOptionsType) commands() []configsync.CommandType {
 	commands := []configsync.CommandType{}
 
 	for _, includeFile := range c.includeFilesWithExtension(".cmd") {
-		f, err := os.OpenFile(path.Join(c.ConfInclude, includeFile), os.O_RDONLY, os.ModePerm)
+		f, err := os.OpenFile(path.Join(c.includeDir(), includeFile), os.O_RDONLY, os.ModePerm)
 		if err != nil {
 			log.Error("Error opening file %s: %s", includeFile, err.Error())
 			continue

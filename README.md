@@ -9,7 +9,8 @@ branch with the hostname of the system.
 
 For each file you specify, ConfigSync will make a 1-to-1 clone of that file in the work directory. If the file already
 exists, it will only update it if the files differ by hash. If a glob pattern is specified, it expands and syncs each
-file that matched the pattern.
+file that matched the pattern. Files in the work directory that don't match any file path or glob in the configuration
+are removed.
 
 For each command that is specified the `command_line` is executed (within a shell) and the resulting combined output
 (both stdout and stderr) is written to `file_path`. If the output of the command matches an existing file in
@@ -27,7 +28,7 @@ such as with a crontab.
 For example, you may wish to use:
 
 ```
-0 */4 * * * /root/configsync
+0 */4 * * * /sbin/configsync /etc/configsync/configsync.conf
 ```
 
 Which will run ConfigSync every 4 hours.
@@ -55,25 +56,24 @@ path to the config file by providing it as the one and only argument.
 **Example Config:**
 
 ```toml
+# Required - The directory where file lists and commands are specified. This path is relative to the primary
+# configuration file itself.
 conf_include = "./conf.d"
+# Required - The git working directory where synced files are saved.
 workdir = "/root/configuration_files"
 
 [git]
+# Optional - Path to the git binary. If omitted will look in $PATH.
 path = "/usr/bin/git"
+# Optional - If true then will pull/push from the remote. The remote must already be configured in the git working
+# directory.
 remote_enabled = true
+# Optional (required if remote_enabled is true) - The remote name to use for pulling/pushing. Most of the time this is
+# 'origin'.
 remote_name = "origin"
+# Optional - The name of the branch to use for git operations. If omitted the hostname of the system is used.
+branch_name = "localhost.localdomain"
 ```
-
-|Option|Type|Required|Description|
-|-|-|-|-|
-|`conf_include`|string|Yes|The directory were file lists and commands are specified.|
-|`workdir`|string|Yes|The directory where synced files are saved. This will be a local git repository.|
-|`verbose`|boolean|No|If true, more information is printed to the terminal and log file.|
-|`git.path`|string|No|The absolute path to the git binary. If omitted it will try and find it using $PATH.|
-|`git.author`|string|No|The author of commits. Will default to the hostname of the machine.|
-|`git.remote_enabled`|boolean|No|If there is a git remote that our local copy should be pushed/pulled to.|
-|`git.remote_name`|string|No (Yes if `remote_enabled` is true)|The name of the remote.|
-|`git.branch_name`|string|No|The name of the branch to use. Defaults to the hostname of the machine.|
 
 ### File Lists
 
@@ -103,20 +103,23 @@ extension of ".cmd".
 **Example Config:**
 
 ```toml
+# Required - The pseudo file path where the output of the command will be savedto in the working directory of
+# configsync (i.e. the git workdir).
 file_path = "/etc/zpool.yml"
+# Required - The path to the executable to run. Do not include arguments here!
 exe_path = "/usr/sbin/zdb"
+# Optional - Array of arguments to pass to the executable
 arguments = [ "-C" ]
+# Optional - The working directory to start the executable in.
+work_dir = "/etc/"
+# Optional - Array of strings of key = value pairs for environment variables. By default the executable will inherit
+# all variables of configsync itself.
+env = [ "key=value" ]
+# Optional - User ID number to run the executable as. Will also set ownership of the outputted file.
+uid = 1000
+# Optional - Group ID number to run the executable as. Will also set ownership of the outputted file.
+gid = 1000
 ```
-
-|Option|Type|Required|Description|
-|-|-|-|-|
-|`file_path`|string|Yes|The pseudo file path where the output of `command_line` will be saved in the work dir.|
-|`exe_path`|string|Yes|The absolute path to the binary to execute.|
-|`arguments`|[]string|No|List of arguments to pass to the executable.|
-|`work_dir`|string|No|The working directory to start the executable in.|
-|`env`|[]string|No|Environment variables to provide the executable.|
-|`uid`|number|No|Run the executable as a specific user. Will also set ownership of the outputted file to this UID.|
-|`gid`|number|No|Run the executable as a specific group. Will also set ownership of the outputted file to this GID.|
 
 ## Work Directory Setup
 
@@ -126,4 +129,5 @@ ConfigSync will create the directory if needed, and initialize a git project if 
 If you are using a remote, you need to clone the repository first. A remote with the name specified in `remote_name`
 must already exist for ConfigSync to work - it will not create it for you.
 
-In either case, ConfigSync will always work in a branch named of the hostname of the system.
+In either case, ConfigSync will always work in a branch named of the hostname of the system, or `branch_name` if defined
+in the configuration file.
