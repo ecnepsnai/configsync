@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-set -x
 
 ROOT_PATH=$(realpath ../../)
 CONFIGSYNC_VERSION=${1:?Version required}
