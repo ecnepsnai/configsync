@@ -14,7 +14,6 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #pin v4.2.2
         with:
           persist-credentials: false
-          fetch-tags: true
 
       - name: Set up Go
         uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #pin v5.4.0
@@ -28,9 +27,7 @@ jobs:
         run: go test -v ./...
 
       - name: Package
-        run: |
-          git fetch -a
-          ./build.sh $(git describe --tags `git rev-list --tags --max-count=1`)
+        run: ./build.sh ${{ github.ref_name }}
       
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #pin v4.6.2
         with:
@@ -52,7 +49,6 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #pin v4.2.2
         with:
           persist-credentials: false
-          fetch-tags: true
 
       - name: Set up Go
         uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #pin v5.4.0
@@ -66,9 +62,7 @@ jobs:
         run: go test -v ./...
 
       - name: Package
-        run: |
-          git fetch -a
-          ./build.sh $(git describe --tags `git rev-list --tags --max-count=1`)
+        run: ./build.sh ${{ github.ref_name }}
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #pin v4.6.2
         with:
