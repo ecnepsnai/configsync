@@ -27,7 +27,7 @@ jobs:
         run: go test -v ./...
 
       - name: Package
-        run: ./build.sh ${{ github.ref_name }}
+        run: ./build.sh
       
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #pin v4.6.2
         with:
@@ -62,7 +62,7 @@ jobs:
         run: go test -v ./...
 
       - name: Package
-        run: ./build.sh ${{ github.ref_name }}
+        run: ./build.sh
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #pin v4.6.2
         with:

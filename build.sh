@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-CONFIGSYNC_VERSION=${1:?Version required}
+CONFIGSYNC_VERSION=$(cat version.txt)
 BUILD_DATE=$(date -u -R)
 
 function build {
