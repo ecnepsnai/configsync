@@ -5,6 +5,7 @@ Summary:        Configuration synchronization software
 License:        MIT
 Source0:        %{name}-%{version}.tar.gz
 BuildRequires:  systemd-rpm-macros
+Requires:       git
 Provides:       %{name} = %{version}
 Prefix:         %{_sbindir}
 

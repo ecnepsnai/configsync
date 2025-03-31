@@ -29,15 +29,15 @@ GOLANG_ARCH="amd64"
 PODMAN_ARCH="amd64"
 if [[ $(uname -m) == 'aarch64' ]]; then
     GOLANG_ARCH="arm64"
-    PODMAN_ARCH="arm64/v8"
+    PODMAN_ARCH="arm64"
 fi
 GOLANG_VERSION=$(curl -sS "https://go.dev/dl/?mode=json" | jq -r '.[0].version' | sed 's/go//')
 
-podman build --platform=${PODMAN_ARCH} --build-arg GOLANG_ARCH=${GOLANG_ARCH} --build-arg GOLANG_VERSION=${GOLANG_VERSION} -t localhost/configsync_build_rpm:${CONFIGSYNC_VERSION} .
+podman build --platform=linux/${PODMAN_ARCH} --build-arg GOLANG_ARCH=${GOLANG_ARCH} --build-arg GOLANG_VERSION=${GOLANG_VERSION} -t localhost/configsync_build_rpm:${CONFIGSYNC_VERSION} .
 ID=$(podman image inspect --format '{{ .Id }}' localhost/configsync_build_rpm:${CONFIGSYNC_VERSION})
 rm -rf rpms
 mkdir -p rpms
-podman run --platform=${PODMAN_ARCH} --user root -v $(readlink -f rpms):/root/rpmbuild/RPMS:Z -e CONFIGSYNC_VERSION=${CONFIGSYNC_VERSION} -e BUILD_DATE="${BUILD_DATE}" -it ${ID}
+podman run --platform=linux/${PODMAN_ARCH} --user root -v $(readlink -f rpms):/root/rpmbuild/RPMS:Z -e CONFIGSYNC_VERSION=${CONFIGSYNC_VERSION} -e BUILD_DATE="${BUILD_DATE}" -it ${ID}
 cp -v rpms/*/*.rpm .
 mv *.rpm ../../../artifacts
 cd ../
