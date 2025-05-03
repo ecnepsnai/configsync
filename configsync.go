@@ -39,7 +39,7 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 	log.Debug("Commands: %+v", commands)
 	log.Debug("Git options: %+v", gitOptions)
 
-	if err := makeDirectoryIfNotExists(workDir); err != nil {
+	if err := os.MkdirAll(workDir, 0755); err != nil {
 		log.PFatal("Error making work directory", map[string]interface{}{
 			"path":  workDir,
 			"error": err.Error(),
@@ -203,8 +203,8 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 			continue
 		}
 
-		syncDir := pathWithoutFile(syncPath)
-		if err := makeDirectoryIfNotExists(syncDir); err != nil {
+		syncDir := filepath.Dir(syncPath)
+		if err := os.MkdirAll(syncDir, 0755); err != nil {
 			log.PError("Error making sync directory", map[string]interface{}{
 				"path":  syncDir,
 				"error": err.Error(),
@@ -265,8 +265,8 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 		log.Info("Running command '%s %s' -> '%s'", command.ExePath, command.Arguments, command.FilePath)
 		syncAtomicPath := path.Join(workDir, command.FilePath+"_")
 		syncPath := path.Join(workDir, command.FilePath)
-		syncDir := pathWithoutFile(syncPath)
-		if err := makeDirectoryIfNotExists(syncDir); err != nil {
+		syncDir := filepath.Dir(syncPath)
+		if err := os.MkdirAll(syncDir, 0755); err != nil {
 			log.PError("Error making sync directory", map[string]interface{}{
 				"path":  syncDir,
 				"error": err.Error(),
@@ -349,4 +349,49 @@ func Start(workDir string, filePatterns []string, commands []CommandType, gitOpt
 
 	finished := time.Since(start)
 	log.Info("Finished in %s", finished)
+}
+
+func ListMatchedFiles(filePatterns []string) (filesToBackup []string) {
+	filesToBackup = []string{}
+
+	for _, pattern := range filePatterns {
+		if fileExists(pattern) {
+			filesToBackup = append(filesToBackup, pattern)
+			continue
+		}
+
+		paths, err := filepath.Glob(pattern)
+		if err != nil {
+			continue
+		}
+		if len(paths) == 0 {
+			continue
+		}
+		for _, globPath := range paths {
+			info, err := os.Stat(globPath)
+			if err != nil {
+				log.PError("Error querying path from glob", map[string]interface{}{
+					"path":  globPath,
+					"error": err.Error(),
+					"glob":  pattern,
+				})
+				continue
+			}
+			if info.IsDir() {
+				files, err := listAllFilesInDirectory(globPath)
+				if err != nil {
+					log.PError("Error listing files in directory", map[string]interface{}{
+						"path":  globPath,
+						"error": err.Error(),
+					})
+					continue
+				}
+				filesToBackup = append(filesToBackup, files...)
+			} else {
+				filesToBackup = append(filesToBackup, globPath)
+			}
+		}
+	}
+
+	return
 }

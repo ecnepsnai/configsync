@@ -5,15 +5,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/cespare/xxhash/v2"
 )
-
-func directoryExists(dirPath string) bool {
-	stat, err := os.Stat(dirPath)
-	return err == nil && stat.IsDir()
-}
 
 func fileExists(filePath string) bool {
 	info, err := os.Stat(filePath)
@@ -21,14 +15,6 @@ func fileExists(filePath string) bool {
 		return false
 	}
 	return !info.IsDir()
-}
-
-func makeDirectoryIfNotExists(dirPath string) error {
-	if directoryExists(dirPath) {
-		return nil
-	}
-
-	return os.MkdirAll(dirPath, 0755)
 }
 
 func getHostname() string {
@@ -58,11 +44,6 @@ func hashFile(filePath string) (uint64, error) {
 		return 0, err
 	}
 	return w.Sum64(), nil
-}
-
-func pathWithoutFile(filePath string) string {
-	components := strings.Split(filePath, "/")
-	return strings.Join(components[0:len(components)-1], "/")
 }
 
 func listAllFilesInDirectory(dir string) ([]string, error) {

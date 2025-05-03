@@ -17,25 +17,49 @@ import (
 var log = logtic.Log.Connect("configsync")
 
 func printHelpAndExit() {
-	fmt.Fprintf(os.Stderr, "Usage %s [Override config path]\n", os.Args[0])
+	fmt.Printf(`Usage %s [Options] [Configuration Path]
+
+Options:
+
+-h           Display this help
+--help
+
+-v           Prints version information
+--version
+
+-t           Test the configuration file and print
+--test       all matching files that will be synced
+
+Configuration Path:
+The configuration path defaults to configsync.conf in the
+current directory. You can specify a different file path
+by providing it as the final argument to configsync.
+`, os.Args[0])
 	os.Exit(1)
 }
 
 func main() {
-	args := os.Args
-	if len(args) >= 2 {
-		if args[1] == "-h" || args[1] == "--help" {
+	configPath := "configsync.conf"
+	testOnly := false
+
+	for i := 1; i < len(os.Args); i++ {
+		arg := os.Args[i]
+		switch arg {
+		case "-h", "--help":
 			printHelpAndExit()
-		}
-		if args[1] == "-v" || args[1] == "--version" {
+		case "-v", "--version":
 			fmt.Printf("configsync v%s built on %s\n", Version, BuildDate)
 			os.Exit(0)
+		case "-t", "--test":
+			testOnly = true
+		default:
+			if i == len(os.Args)-1 {
+				configPath = arg
+			} else {
+				fmt.Fprintf(os.Stderr, "Unknown argument %s\n", arg)
+				printHelpAndExit()
+			}
 		}
-	}
-
-	configPath := "configsync.conf"
-	if len(args) == 2 {
-		configPath = os.Args[1]
 	}
 
 	f, err := os.Open(configPath)
@@ -86,6 +110,12 @@ func main() {
 	}
 	logtic.Log.Open()
 
+	if testOnly {
+		matchedFiles := configsync.ListMatchedFiles(config.filePatterns())
+		fmt.Printf("%s\n", strings.Join(matchedFiles, "\n"))
+		os.Exit(1)
+	}
+
 	configsync.Start(config.Workdir, config.filePatterns(), config.commands(), config.Git)
 }
 
@@ -130,7 +160,7 @@ func (c configSyncOptionsType) filePatterns() []string {
 		defer f.Close()
 		data, _ := io.ReadAll(f)
 
-		for _, line := range strings.Split(string(data), "\n") {
+		for line := range strings.SplitSeq(string(data), "\n") {
 			if line == "" {
 				continue
 			}
